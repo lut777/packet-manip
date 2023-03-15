@@ -2,8 +2,7 @@ package main
 
 import (
 	"encoding/binary"
-	"github.com/gojue/ebpfmanager"
-	"github.com/google/uuid"
+	manager "github.com/DataDog/ebpf-manager"
 	"github.com/sirupsen/logrus"
 	"net"
 	"os"
@@ -39,21 +38,39 @@ var vmInfo2 = VmInfo{
 }
 
 var probe1 = manager.Probe{
-	Section:       "xdp",
-	EbpfFuncName:  "ingRedirect",
+	ProbeIdentificationPair: manager.ProbeIdentificationPair{
+		EBPFFuncName: "ingRedirect",
+		EBPFSection:  "xdp",
+		UID:          "ff2834ba93f1_h",
+	},
 	Ifindex:       3880,
 	Ifname:        "ff2834ba93f1_h",
 	XDPAttachMode: manager.XdpAttachModeSkb,
-	UID:           uuid.New().String(),
 }
 
 var probe2 = manager.Probe{
-	Section:       "xdp",
-	EbpfFuncName:  "ingRedirect",
+	ProbeIdentificationPair: manager.ProbeIdentificationPair{
+		UID:          "5f40a314654d_h",
+		EBPFFuncName: "ingRedirect",
+		EBPFSection:  "xdp",
+	},
 	Ifindex:       3882,
 	Ifname:        "5f40a314654d_h",
 	XDPAttachMode: manager.XdpAttachModeSkb,
-	UID:           uuid.New().String(),
+}
+
+var probeIPRcv = manager.Probe{
+	ProbeIdentificationPair: manager.ProbeIdentificationPair{
+		EBPFFuncName: "ip_rcv_latency",
+	},
+	SyscallFuncName: "ip_rcv",
+}
+
+var probeIPRcvFin = manager.Probe{
+	ProbeIdentificationPair: manager.ProbeIdentificationPair{
+		EBPFFuncName: "ip_rcv_finish_latency",
+	},
+	SyscallFuncName: "ip_rcv_finish_core",
 }
 
 var map1 = manager.Map{
@@ -61,9 +78,35 @@ var map1 = manager.Map{
 	MapOptions: manager.MapOptions{},
 }
 
+var map2 = manager.Map{
+	Name:       "kernelrx_entry",
+	MapOptions: manager.MapOptions{},
+}
+
 var m = &manager.Manager{
-	Probes: []*manager.Probe{&probe1, &probe2},
-	Maps:   []*manager.Map{&map1},
+	Probes: []*manager.Probe{&probe1, &probe2, &probeIPRcv, &probeIPRcvFin},
+	Maps:   []*manager.Map{&map1, &map2},
+}
+
+var activeBPF1 = "ip_rcv_latency"
+var activeBPF2 = "ip_rcv_finish_latency"
+
+var opt = manager.Options{
+	ActivatedProbes: []manager.ProbesSelector{
+		&manager.AllOf{
+			Selectors: []manager.ProbesSelector{
+				&manager.ProbeSelector{
+					ProbeIdentificationPair: manager.ProbeIdentificationPair{
+						EBPFFuncName: activeBPF1,
+					},
+				},
+				&manager.ProbeSelector{
+					ProbeIdentificationPair: manager.ProbeIdentificationPair{
+						EBPFFuncName: activeBPF2,
+					}},
+			},
+		},
+	},
 }
 
 func main() {
@@ -71,7 +114,7 @@ func main() {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, os.Kill, syscall.SIGTERM)
 
-	if err := m.Init(recoverAssets()); err != nil {
+	if err := m.InitWithOptions(recoverAssets(), opt); err != nil {
 		log.Fatal(err)
 	}
 
@@ -98,6 +141,8 @@ func main() {
 	if err != nil {
 		log.Errorf("%v", err)
 	}
+
+	// reading
 
 	if err = dumpSharedMap(redMap); err != nil {
 		log.Errorf("%v", err)

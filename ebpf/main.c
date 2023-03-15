@@ -5,6 +5,7 @@
 #include <linux/if_ether.h>
 #include <linux/ip.h>
 #include "redirec.h"
+#include "latency.h"
 
 // #ifndef __section
 // # define __section(NAME)                  \
@@ -18,6 +19,8 @@
 //    bpf_printk("ingress forward sk\n");
 //    return bpf_redirect(58, 0);
 // }
+
+#define THRESH 1000000
 
 SEC("XDP")
 int ingr_redirect(struct xdp_md *ctx)
@@ -48,7 +51,42 @@ int ingr_redirect(struct xdp_md *ctx)
 }
     bpf_printk("tcp_v4_connect dest IP: %b", *res);
     return XDP_PASS;
+};
+
+SEC("kprobe/ip_rcv")
+int ip_rcv_latency(struct pt_regs * ctx){
+{
+    struct sk_buff *skb = (struct *sk_buff)PT_REGS_PARM1(ctx);
+    struct rxlatency_t  lat = {0};
+    lat->rcv = bpf_ktime_get_ns();
+    bpf_map_update_elem(&kernelrx_entry, &skb, &lat, BPF_ANY);
+    return 0;
+};
+
+SEC("kprobe/ip_rcv_finish_core")
+int ip_rcv_finish_latency(struct pt_regs *ctx){
+{
+    struct sk_buff *skb = (struct *sk_buff)PT_REGS_PARM3(ctx);
+    struct rxlatency_t *lat = bpf_map_lookup_elem(&kernelrx_entry,&skb);
+	if (lat) {
+		lat->rcvfinish = bpf_ktime_get_ns();
+		bpf_map_delete_elem(&kernelrx_entry, &skb);
+		record_rx(ctx, skb, lat)
+		bpf_printk("ip rcv %llu, ip rcv finish %llu\n",lat->rcv,lat->rcvfinish);
+	}
+    return 0;
+};
+
+static inline int record_rx(struct pt_regs *ctx , struct skb *sk_buff, struct rxlatency_t *lat){
+    if (lat->rcvfinish > lat->rcv) {
+        u64 latency;
+        latency = lat->rcvfinish - lat->rcv;
+        if ( latency > THRESH ) {
+
+        }
+    }
+    return 0
 }
 
-
 char _license[] SEC("license") = "GPL";
+__u32 _version SEC("version") = 0xFFFFFFFE;

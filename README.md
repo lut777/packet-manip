@@ -4,7 +4,7 @@
 
 cilium/ebpf [0.10.0](https://github.com/cilium/ebpf) 2023/2/5
 
-gojue/ebpfmanager [0.4.1](https://github.com/gojue/ebpfmanager)  (类似datadog/ebpf/manager)
+atadog/ebpf/manager [v1.0.3](https://github.com/DataDog/ebpf-manager)
 
 [go-bindata](https://github.com/shuLhan/go-bindata/cmd/go-bindata) 用于生成ebpf字节码文件的go包
 
