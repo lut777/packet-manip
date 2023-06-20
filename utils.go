@@ -5,9 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/cilium/ebpf"
 	"io"
-	"net"
 	"os"
 	"unsafe"
 
@@ -57,18 +55,4 @@ func trigger() error {
 
 	// Removing the tmp directory
 	return os.RemoveAll(tmpDir)
-}
-
-// dumpSharedMap - Dumps the content of the provided map at the provided key
-func dumpSharedMap(sharedMap *ebpf.Map) error {
-	var key, val uint32
-	entries := sharedMap.Iterate()
-	for entries.Next(&key, &val) {
-		// Order of keys is non-deterministic due to randomized map seed
-		var ip []byte = make([]byte, 4)
-		binary.LittleEndian.PutUint32(ip, key)
-		IP := net.IPv4(ip[0], ip[1], ip[2], ip[3])
-		logrus.Printf("%v contains %v at key %v", sharedMap, val, IP.String())
-	}
-	return entries.Err()
 }
