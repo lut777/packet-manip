@@ -36,7 +36,7 @@ var map2 = manager.Map{
 	MapOptions: manager.MapOptions{},
 }
 
-var TPStructEn = TPstruct{
+var tpStructEn = TPstruct{
 	Pbstruct: utils.Pbstruct{
 		Probes:   []*manager.Probe{&probeIPRcv, &probeIPRcvFin},
 		Maps:     []*manager.Map{&map2},

@@ -4,7 +4,6 @@ import (
 	"MyEbpf.io/m/utils"
 	"encoding/binary"
 	manager "github.com/DataDog/ebpf-manager"
-	"log"
 	"net"
 )
 
@@ -90,23 +89,23 @@ func (xdp *XDPstruct) Init() {
 			case input := <-xdp.AddChan:
 				redMap, found, err := xdp.Mngr.GetMap(input.mapname)
 				if err != nil || !found {
-					log.Println("error :%v, %s", err, "couldn't find shared_cache2 in m1")
+					utils.Mylog.Println("error :%v, %s", err, "couldn't find shared_cache2 in m1")
 				}
 				// updating map KV
 				// crud could be found in cilium/ebpf/map.go
 				err = redMap.Put(input.key, input.value)
 				if err != nil {
-					log.Println("%v", err)
+					utils.Mylog.Println("%v", err)
 				}
 
 			case input := <-xdp.DelChan:
 				redMap, found, err := xdp.Mngr.GetMap(input.mapname)
 				if err != nil || !found {
-					log.Println("error :%v, %s", err, "couldn't find shared_cache2 in m1")
+					utils.Mylog.Println("error :%v, %s", err, "couldn't find shared_cache2 in m1")
 				}
 				err = redMap.Delete(input.key)
 				if err != nil {
-					log.Println("%v", err)
+					utils.Mylog.Println("%v", err)
 				}
 
 			case <-xdp.StopChan:
